@@ -104,7 +104,7 @@ npm run gql "mutation { insertIntousersCollection(objects: [{name: \"Bob\", emai
 Use the `run-mongo.js` script to execute MongoDB-style queries via FerretDB:
 
 ```bash
-npm run mongo products '{}' '{_id:1,name:1}'
+npm run mongo products '{}' '{"_id":1,"name":1}'
 ```
 
 ```bash
