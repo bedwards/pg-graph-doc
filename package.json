@@ -1,0 +1,26 @@
+{
+  "name": "pg-graph-doc",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "sql": "node run-sql.js",
+    "gql": "node run-gql.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bedwards/pg-graph-doc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bedwards/pg-graph-doc/issues"
+  },
+  "homepage": "https://github.com/bedwards/pg-graph-doc#readme",
+  "dependencies": {
+    "graphql-request": "^7.3.1",
+    "pg": "^8.16.3"
+  }
+}
