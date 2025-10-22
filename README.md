@@ -38,6 +38,10 @@ All three interfaces share the same PostgreSQL backend, allowing you to leverage
 2. **Start the services:**
 
    ```bash
+   # first time
+   docker-compose up --build -d 
+
+   # then after
    docker-compose up -d
    ```
 
