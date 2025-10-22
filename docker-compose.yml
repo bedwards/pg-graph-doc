@@ -46,8 +46,8 @@ services:
 
     environment:
       FERRETDB_POSTGRESQL_URL: postgres://postgres:postgres@pg-graph-doc:5432/app
-      FERRETDB_TELEMETRY: disable
-
+      FERRETDB_TELEMETRY: 0
+      FERRETDB_AUTH: 0
 
 volumes:
   pgdata:
