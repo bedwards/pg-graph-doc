@@ -2,6 +2,8 @@
 
 A unified PostgreSQL setup that provides three query interfaces in one database: **SQL**, **GraphQL**, and **MongoDB**-compatible queries.
 
+[Docker Hub: bedwards/pg-graph-doc](https://hub.docker.com/repository/docker/bedwards/pg-graph-doc)
+
 ## Overview
 
 This project demonstrates how to use a single PostgreSQL database with multiple query paradigms:
