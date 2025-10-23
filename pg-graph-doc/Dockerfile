@@ -22,5 +22,5 @@ ARG BIN_DIR=/usr/local/bin
 COPY ${ENTRYPOINT} ${BIN_DIR}/
 RUN chmod +x ${BIN_DIR}/${ENTRYPOINT}
 
-ENTRYPOINT [${ENTRYPOINT}]
+ENTRYPOINT ["docker-entrypoint-pg-graph-doc.sh"]
 CMD ["postgres"]
