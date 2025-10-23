@@ -7,7 +7,7 @@ Query the same data with SQL, GraphQL, MongoDB, and DocumentDB APIs - all backed
 - 🐳 **Docker Hub:** [bedwards/pg-graph-doc](https://hub.docker.com/r/bedwards/pg-graph-doc)
 - 💻 **GitHub:** [bedwards/pg-graph-doc](https://github.com/bedwards/pg-graph-doc)
 
-📚 **Deep dive:** [GraphQL and MongoDB in the Context of PostgreSQL](GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md)
+📚 **Deep dive:** [GraphQL and MongoDB in the Context of PostgreSQL](https://github.com/bedwards/pg-graph-doc/blob/main/GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md)
 
 ## 🔥 What Makes This Cool
 
@@ -234,7 +234,7 @@ mongosh "$MONGODB_URL"
 
 ## 🎓 Learning Resources
 
-- [GraphQL and MongoDB in the Context of PostgreSQL](GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md) - Deep dive into how these systems work together
+- [GraphQL and MongoDB in the Context of PostgreSQL](https://github.com/bedwards/pg-graph-doc/blob/main/GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md) - Deep dive into how these systems work together
 - [pg_graphql docs](https://github.com/supabase/pg_graphql) - GraphQL extension details
 - [FerretDB docs](https://docs.ferretdb.io/) - MongoDB compatibility layer
 - [DocumentDB PostgreSQL Extension](https://github.com/FerretDB/documentdb) - Native document store
