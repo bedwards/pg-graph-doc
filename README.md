@@ -11,7 +11,7 @@ Query the same data with SQL, GraphQL, MongoDB, and DocumentDB APIs - all backed
 
 ## 🔥 What Makes This Cool
 
-This isn't a toy. It's a PostgreSQL 17 setup with:
+This isn't a toy. It's a PostgreSQL 16 setup with:
 - **pg_graphql** - Auto-generated GraphQL API from your schema
 - **DocumentDB extensions** - Native MongoDB-compatible document store
 - **FerretDB** - Full MongoDB wire protocol (use `mongosh`, drivers, etc.)
