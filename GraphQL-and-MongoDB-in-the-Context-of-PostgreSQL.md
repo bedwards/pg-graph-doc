@@ -7,12 +7,14 @@ You have **one PostgreSQL database** that you can talk to in three ways:
 ```
 Your Data (PostgreSQL tables)
     ↓
-    ├─→ SQL: Direct table access
-    ├─→ GraphQL: Auto-generated API from tables
-    └─→ MongoDB: Document store (stored as JSONB in PostgreSQL)
+    ├─→ SQL: Direct table access (postgres database)
+    ├─→ GraphQL: Auto-generated API from tables (postgres database, via PostgREST)
+    └─→ MongoDB: Document store (app database, stored as JSONB in PostgreSQL)
 ```
 
 **Key insight**: GraphQL and MongoDB aren't databases—they're **query languages** sitting on top of PostgreSQL.
+
+**Important architectural note**: This setup uses PostgREST to expose the pg_graphql extension's `graphql()` function via HTTP at `/rpc/graphql`. The GraphQL endpoint is at `http://localhost:3000/rpc/graphql`.
 
 ## GraphQL: Structured, Type-Safe, Relationship-Focused
 
@@ -38,16 +40,17 @@ GraphQL says: "Give me exactly these fields, and related data from other tables"
 
 **Core difference**: GraphQL lets clients ask for precisely what they need, including relationships, in one request.
 
-### How pg_graphql Works
+### How pg_graphql Works (via PostgREST)
 
-1. You create normal SQL tables
-2. pg_graphql reads your schema
-3. It automatically generates a GraphQL API
+1. You create normal SQL tables **with PRIMARY KEYs** (critical!)
+2. pg_graphql reads your schema and generates GraphQL types
+3. PostgREST exposes the `graphql()` function as an HTTP endpoint
+4. You query it via `http://localhost:3000/rpc/graphql`
 
 **Example**:
 
 ```bash
-# Create a relational schema
+# Create a relational schema - PRIMARY KEYS are REQUIRED
 npm run sql "CREATE TABLE authors (id SERIAL PRIMARY KEY, name TEXT, bio TEXT)"
 npm run sql "CREATE TABLE books (id SERIAL PRIMARY KEY, author_id INT REFERENCES authors(id), title TEXT, pages INT)"
 npm run sql "INSERT INTO authors (name, bio) VALUES ('Ursula K. Le Guin', 'American author')"
@@ -58,10 +61,36 @@ Now GraphQL automatically exposes this:
 
 ```bash
 # Get author with all their books in one query
-npm run gql "{ authorsCollection { edges { node { name books: booksCollection { edges { node { title pages } } } } } } }"
+npm run gql "{ authorsCollection { edges { node { name booksCollection { edges { node { title pages } } } } } } }"
 ```
 
 **What just happened**: GraphQL saw the foreign key relationship (`author_id`) and automatically created a way to traverse it. You didn't write any API code.
+
+### ⚠️ Critical Requirement: Primary Keys
+
+**Tables MUST have a PRIMARY KEY for pg_graphql to work!**
+
+```bash
+# ✅ This works
+npm run sql "CREATE TABLE foo (bar INT PRIMARY KEY);"
+npm run sql "INSERT INTO foo (bar) VALUES (1)"
+npm run gql 'query { fooCollection { edges { node { bar } } } }'
+# Output: {"data":{"fooCollection":{"edges":[{"node":{"bar":1}}]}}}
+
+# ❌ This won't work - no PRIMARY KEY
+npm run sql "CREATE TABLE broken (bar INT);"
+# GraphQL queries will fail or not expose this table
+```
+
+**Why?** pg_graphql needs primary keys to:
+- Generate unique node IDs for GraphQL's global object identification
+- Enable proper pagination with cursors
+- Support mutations (updates/deletes need to identify records)
+
+**Fix for existing tables:**
+```bash
+npm run sql "ALTER TABLE your_table ADD PRIMARY KEY (id)"
+```
 
 ### When GraphQL Shines
 
@@ -77,19 +106,20 @@ npm run gql "{ authorsCollection { edges { node { name books: booksCollection { 
 # With REST: 3 endpoints (/posts, /users, /comments/count)
 # With GraphQL: 1 query
 
-npm run gql "{ postsCollection { edges { node { title author: authors { name } comments: commentsCollection(filter: {}) { totalCount } } } } }"
+npm run gql "{ postsCollection { edges { node { title authorsCollection { edges { node { name } } } commentsCollection { totalCount } } } } }"
 ```
 
 ### GraphQL Database Design
 
-**Design principle**: Use normal relational tables. GraphQL works best with:
+**Design principle**: Use normal relational tables with PRIMARY KEYS. GraphQL works best with:
 
-1. **Clear foreign keys** - GraphQL follows these automatically
-2. **Normalized data** - Separate tables for separate concepts
-3. **Simple types** - TEXT, INT, BOOLEAN (GraphQL types map cleanly)
+1. **PRIMARY KEYS** - Absolutely required for every table
+2. **Clear foreign keys** - GraphQL follows these automatically
+3. **Normalized data** - Separate tables for separate concepts
+4. **Simple types** - TEXT, INT, BOOLEAN (GraphQL types map cleanly)
 
 ```bash
-# Good for GraphQL
+# Good for GraphQL - note the PRIMARY KEYs
 npm run sql "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)"
 npm run sql "CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id), title TEXT)"
 
@@ -126,6 +156,8 @@ Your MongoDB query → FerretDB → PostgreSQL JSONB operations
 ```
 
 MongoDB stores each collection as a PostgreSQL table with a JSONB column holding the document.
+
+**Important**: FerretDB uses the `app` database, while SQL/GraphQL use the `postgres` database. They share the same PostgreSQL instance but are logically separated.
 
 ### Example: Flexible Product Catalog
 
@@ -176,10 +208,10 @@ npm run mongo users '{
   }
 }'
 
-# vs SQL style: Separate tables
-npm run sql "CREATE TABLE users (id INT, name TEXT)"
-npm run sql "CREATE TABLE profiles (user_id INT, bio TEXT, avatar TEXT)"
-npm run sql "CREATE TABLE preferences (user_id INT, theme TEXT, notifications BOOL)"
+# vs SQL style: Separate tables (with PRIMARY KEYs)
+npm run sql "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)"
+npm run sql "CREATE TABLE profiles (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id), bio TEXT, avatar TEXT)"
+npm run sql "CREATE TABLE preferences (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id), theme TEXT, notifications BOOL)"
 ```
 
 **MongoDB wins when**: You always fetch this data together.
@@ -228,6 +260,8 @@ npm run gql "{
 }"
 ```
 
+**Remember**: All tables queried via GraphQL must have PRIMARY KEYs!
+
 ### Use MongoDB when:
 - Rapid prototyping (schema unknown)
 - Heterogeneous data (products, events, logs)
@@ -259,20 +293,22 @@ npm run mongo configs '{
 
 ### Strategy 1: Domain Separation (Recommended)
 
-**Use SQL/GraphQL for**: Core business entities with relationships
+**Use SQL/GraphQL for**: Core business entities with relationships (with PRIMARY KEYs!)
 **Use MongoDB for**: Flexible/unstructured data
 
 ```bash
-# Relational core (users, orders, inventory)
+# Relational core (users, orders, inventory) - note PRIMARY KEYs
 npm run sql "CREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT, email TEXT)"
 npm run sql "CREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INT REFERENCES customers(id), total DECIMAL)"
 
-# Flexible metadata
+# Flexible metadata (in FerretDB's 'app' database)
 npm run mongo customer_metadata '{"customerId": 1, "preferences": {...}, "tags": [...], "notes": "..."}'
 npm run mongo order_events '{"orderId": 1, "type": "shipped", "carrier": "USPS", "tracking": "..."}'
 ```
 
 **Pattern**: Use SQL for relationships and queries, MongoDB for flexible attributes that change often.
+
+**Note**: Since FerretDB uses a different database (`app`), you'll reference records by ID rather than using foreign keys across the boundary.
 
 ### Strategy 2: Read/Write Separation
 
@@ -280,11 +316,12 @@ npm run mongo order_events '{"orderId": 1, "type": "shipped", "carrier": "USPS",
 **GraphQL for reads**: Efficient data fetching
 
 ```bash
-# Write with SQL (validation)
+# Write with SQL (validation) - PRIMARY KEY required
+npm run sql "CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, price DECIMAL, category_id INT)"
 npm run sql "INSERT INTO products (name, price, category_id) VALUES ('Widget', 29.99, 5)"
 
 # Read with GraphQL (relationships)
-npm run gql "{ productsCollection { edges { node { name price category { name } } } } }"
+npm run gql "{ productsCollection { edges { node { name price } } } }"
 ```
 
 ### Strategy 3: Shared Data with JSONB
@@ -292,7 +329,7 @@ npm run gql "{ productsCollection { edges { node { name price category { name } 
 **PostgreSQL JSONB bridges both worlds**: Queryable JSON in relational tables.
 
 ```bash
-# SQL table with JSONB column
+# SQL table with JSONB column - still needs PRIMARY KEY for GraphQL
 npm run sql "CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, price DECIMAL, metadata JSONB)"
 npm run sql "INSERT INTO products (name, price, metadata) VALUES ('Laptop', 999, '{\"ram\": \"16GB\", \"ports\": [\"USB-C\", \"HDMI\"]}')"
 
@@ -301,23 +338,22 @@ npm run sql "SELECT name, metadata->>'ram' as ram FROM products WHERE metadata @
 
 # Access via GraphQL (JSONB becomes JSON field)
 npm run gql "{ productsCollection { edges { node { name metadata } } } }"
-
-# MongoDB-like flexibility in SQL
 ```
 
-**This is the sweet spot**: Relational structure + document flexibility, no duplication.
+**This is the sweet spot**: Relational structure + document flexibility, no duplication, all in the `postgres` database accessible via all three interfaces.
 
 ## Practical Patterns for Shared Data
 
 ### Pattern: Reference by ID
 
-**Don't duplicate, reference**:
+**Don't duplicate, reference across database boundaries**:
 
 ```bash
-# SQL: Core entity
+# SQL: Core entity (postgres database)
+npm run sql "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)"
 npm run sql "INSERT INTO users (id, name) VALUES (1, 'Alice')"
 
-# MongoDB: Reference the SQL entity
+# MongoDB: Reference the SQL entity (app database)
 npm run mongo activity_logs '{"userId": 1, "action": "login", "timestamp": "2024-01-15T10:30:00Z"}'
 
 # Query together when needed
@@ -325,23 +361,26 @@ npm run sql "SELECT u.name FROM users u WHERE id = 1"
 npm run mongo activity_logs '{"userId": 1}'
 ```
 
-### Pattern: Materialized View
+### Pattern: GraphQL with JSONB
 
-**For complex queries across both**:
+**For complex queries that need both structure and flexibility**:
 
 ```bash
-# Create a view combining relational + document data
-npm run sql "
-  CREATE VIEW user_summary AS
-  SELECT 
-    u.id,
-    u.name,
-    (SELECT COUNT(*) FROM activity_logs WHERE userId = u.id) as activity_count
-  FROM users u
-"
+# Create table with PRIMARY KEY and JSONB
+npm run sql "CREATE TABLE events (
+  id SERIAL PRIMARY KEY,
+  event_type TEXT,
+  user_id INT,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+)"
 
-# Expose via GraphQL automatically
-npm run gql "{ userSummaryCollection { edges { node { name activityCount } } } }"
+npm run sql "INSERT INTO events (event_type, user_id, metadata) VALUES 
+  ('login', 1, '{\"ip\": \"1.2.3.4\"}'),
+  ('purchase', 1, '{\"items\": [1, 2], \"total\": 99.99}')"
+
+# Query via GraphQL - gets both structured and flexible data
+npm run gql "{ eventsCollection { edges { node { eventType userId metadata } } } }"
 ```
 
 ### Pattern: Event Sourcing
@@ -349,10 +388,11 @@ npm run gql "{ userSummaryCollection { edges { node { name activityCount } } } }
 **SQL for current state, MongoDB for event history**:
 
 ```bash
-# Current state in SQL
+# Current state in SQL (postgres database, needs PRIMARY KEY)
+npm run sql "CREATE TABLE orders (id SERIAL PRIMARY KEY, status TEXT, total DECIMAL)"
 npm run sql "UPDATE orders SET status = 'shipped' WHERE id = 1"
 
-# Event log in MongoDB
+# Event log in MongoDB (app database)
 npm run mongo order_events '{"orderId": 1, "event": "shipped", "timestamp": "2024-01-15T14:00:00Z", "details": {...}}'
 ```
 
@@ -361,13 +401,14 @@ npm run mongo order_events '{"orderId": 1, "event": "shipped", "timestamp": "202
 Here's how you'd design a real app:
 
 ```bash
-# Core relational data (SQL + GraphQL)
+# Core relational data (SQL + GraphQL) - in postgres database
+# CRITICAL: All tables need PRIMARY KEYs for GraphQL!
 npm run sql "CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, price DECIMAL, stock INT)"
 npm run sql "CREATE TABLE customers (id SERIAL PRIMARY KEY, email TEXT UNIQUE, name TEXT)"
 npm run sql "CREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INT REFERENCES customers(id), status TEXT, total DECIMAL)"
-npm run sql "CREATE TABLE order_items (order_id INT REFERENCES orders(id), product_id INT REFERENCES products(id), quantity INT)"
+npm run sql "CREATE TABLE order_items (id SERIAL PRIMARY KEY, order_id INT REFERENCES orders(id), product_id INT REFERENCES products(id), quantity INT)"
 
-# Flexible data (MongoDB)
+# Flexible data (MongoDB) - in app database
 # - Product reviews (variable fields)
 npm run mongo reviews '{"productId": 1, "rating": 5, "text": "Great!", "images": ["url1", "url2"], "verified": true}'
 
@@ -378,7 +419,7 @@ npm run mongo customer_events '{"customerId": 1, "type": "added_to_cart", "produ
 # - Search history
 npm run mongo searches '{"customerId": 1, "query": "blue widgets", "results": [1, 3, 7], "timestamp": "..."}'
 
-# Frontend queries (GraphQL)
+# Frontend queries (GraphQL) - queries postgres database
 npm run gql "{
   customersCollection(filter: {email: {eq: \"alice@example.com\"}}) {
     edges {
@@ -393,7 +434,14 @@ npm run gql "{
                 edges {
                   node {
                     quantity
-                    product { name price }
+                    productsCollection {
+                      edges {
+                        node {
+                          name
+                          price
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -405,7 +453,7 @@ npm run gql "{
   }
 }"
 
-# Analytics (SQL)
+# Analytics (SQL) - queries postgres database
 npm run sql "
   SELECT p.name, COUNT(oi.product_id) as times_ordered, SUM(oi.quantity) as total_quantity
   FROM products p
@@ -415,18 +463,48 @@ npm run sql "
   LIMIT 10
 "
 
-# Customer insights (MongoDB aggregation)
+# Customer insights (MongoDB aggregation) - queries app database
 npm run mongo customer_events '[{"$match": {"type": "viewed_product"}}, {"$group": {"_id": "$productId", "views": {"$sum": 1}}}, {"$sort": {"views": -1}}, {"$limit": 10}]'
 ```
 
 ## Key Takeaways
 
 1. **SQL**: Strong structure, complex queries, relationships
-2. **GraphQL**: Efficient data fetching for clients, automatic from SQL tables
+2. **GraphQL**: Efficient data fetching for clients, automatic from SQL tables **that have PRIMARY KEYs**
 3. **MongoDB**: Flexible schema, nested data, rapid iteration
 
-4. **Share data by**: Foreign keys (SQL/GraphQL) or IDs (MongoDB references SQL)
-5. **Avoid duplication by**: Using JSONB in PostgreSQL when you need both worlds
-6. **Pragmatic rule**: Use SQL as foundation, GraphQL for API, MongoDB for truly flexible data
+4. **PRIMARY KEYS are mandatory** for GraphQL to work with your tables
+5. **Share data by**: Foreign keys (SQL/GraphQL in `postgres` db) or IDs (MongoDB in `app` db references SQL)
+6. **Avoid duplication by**: Using JSONB in PostgreSQL when you need both worlds in `postgres` db
+7. **Pragmatic rule**: Use SQL as foundation, GraphQL for API (don't forget PRIMARY KEYs!), MongoDB for truly flexible data
 
-**The beauty of this setup**: You're not locked in. Start with SQL, add GraphQL when you build a frontend, use MongoDB for the messy parts that don't fit tables. All in one database, no synchronization needed.
+**The beauty of this setup**: You're not locked in. Start with SQL (add PRIMARY KEYs!), add GraphQL when you build a frontend (via PostgREST), use MongoDB for the messy parts that don't fit tables. All in one PostgreSQL instance, minimal synchronization needed.
+
+## Troubleshooting
+
+### "Table not appearing in GraphQL schema"
+
+**Most common cause**: Missing PRIMARY KEY. Check:
+```bash
+npm run sql "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+npm run sql "SELECT constraint_name, table_name FROM information_schema.table_constraints WHERE constraint_type = 'PRIMARY KEY' AND table_schema = 'public'"
+```
+
+Add PRIMARY KEY if missing:
+```bash
+npm run sql "ALTER TABLE your_table ADD PRIMARY KEY (id)"
+```
+
+### "GraphQL returns empty data"
+
+Verify the table structure and restart PostgREST if needed:
+```bash
+docker-compose restart pg-rpc
+```
+
+### Database confusion
+
+Remember:
+- **postgres** database: Used by SQL and GraphQL
+- **app** database: Used by MongoDB/FerretDB
+- Both are in the same PostgreSQL instance but logically separate
