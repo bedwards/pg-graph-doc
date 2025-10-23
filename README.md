@@ -7,7 +7,7 @@ Query the same data with SQL, GraphQL, MongoDB, and DocumentDB APIs - all backed
 - 🐳 **Docker Hub:** [bedwards/pg-graph-doc](https://hub.docker.com/r/bedwards/pg-graph-doc)
 - 💻 **GitHub:** [bedwards/pg-graph-doc](https://github.com/bedwards/pg-graph-doc)
 
-📚 **Deep dive:** [GraphQL and MongoDB in the Context of PostgreSQL](GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md)
+📚 **Deep dive:** [What We're Actually Building Here](DEEP-DIVE.md)
 
 ## 🔥 What Makes This Cool
 
@@ -200,6 +200,8 @@ Expected output:
                     └──────────────────────┘
 ```
 
+**Read more:** [Architecture Deep Dive](ARCHITECTURE.md)
+
 ## 📦 What's Inside
 
 - **PostgreSQL 16** (or 17) with extensions loaded at startup
@@ -234,7 +236,16 @@ mongosh "$MONGODB_URL"
 
 ## 🎓 Learning Resources
 
+**Getting Started:**
 - [GraphQL and MongoDB in the Context of PostgreSQL](GraphQL-and-MongoDB-in-the-Context-of-PostgreSQL.md) - Deep dive into how these systems work together
+- [GraphQL Guide](GRAPHQL-GUIDE.md) - GraphQL for SQL developers
+- [MongoDB Migration Guide](MONGODB-MIGRATION.md) - Coming from MongoDB? Start here
+
+**Deep Dives:**
+- [Architecture Deep Dive](ARCHITECTURE.md) - How everything fits together
+- [Performance Guide](PERFORMANCE.md) - Benchmarks and optimization strategies
+
+**External:**
 - [pg_graphql docs](https://github.com/supabase/pg_graphql) - GraphQL extension details
 - [FerretDB docs](https://docs.ferretdb.io/) - MongoDB compatibility layer
 - [DocumentDB PostgreSQL Extension](https://github.com/FerretDB/documentdb) - Native document store
@@ -282,6 +293,10 @@ npm run sql "ALTER TABLE your_table ADD PRIMARY KEY (id);"
 **FerretDB connection refused:** Wait 10s after startup for initialization.
 
 **DocumentDB functions missing:** Extensions load at PostgreSQL startup. Check logs.
+
+## TODO
+
+- [TODO](TODO.md) - Roadmap and current status
 
 ## 📄 License
 
