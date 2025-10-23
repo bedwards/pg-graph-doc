@@ -33,17 +33,22 @@ for (let i = 0; i < argv.length; i++) {
   }
 }
 
-const [collectionArg, queryArg = "{}", projArg = "{}"] = positionals;
-
-const collection = flags.collection || flags.c || collectionArg;
-const query = flags.query || flags.q || queryArg;
-const projection = flags.project || flags.p ? JSON.parse(flags.project || flags.p) : JSON.parse(projArg);
+const collection = positionals[0];
+const query = flags.query || flags.q || "{}";
+const projection = flags.project || flags.p ? JSON.parse(flags.project || flags.p) : JSON.parse("{}");
 const sort = flags.sort || flags.s ? JSON.parse(flags.sort || flags.s) : undefined;
 const limit = flags.limit || flags.l ? Number(flags.limit || flags.l) : 50;
+const createIndex = flags["create-index"] || flags.c;
+const indexOptions = flags["index-options"] || flags.o;
 
 if (!collection) {
-  console.error("Usage: node run-mongo.js --collection=<name> [--query='{}'] [--project='{}'] [--sort='{}'] [--limit=50] [--insert='{}']");
-  console.error("Short: -c <name> [-q '{}'] [-p '{}'] [-s '{}'] [-l 50] [-i '{}']");
+  console.error("Usage: node run-mongo.js <collection> [--query='{}'] [--project='{}'] [--sort='{}'] [--limit=50] [--insert='{}'] [--create-index='{}'] [--index-options='{}']");
+  console.error("Short: node run-mongo.js <collection> [-q '{}'] [-p '{}'] [-s '{}'] [-l 50] [-i '{}'] [-c '{}'] [-o '{}']");
+  process.exit(1);
+}
+
+if (indexOptions && !createIndex) {
+  console.error("Error: --index-options requires --create-index");
   process.exit(1);
 }
 
@@ -54,6 +59,13 @@ try {
   const db = client.db("postgres");
   const col = db.collection(collection);
 
+  if (createIndex) {
+    const indexSpec = JSON.parse(createIndex);
+    const options = indexOptions ? JSON.parse(indexOptions) : {};
+    const result = await col.createIndex(indexSpec, options);
+    console.log(JSON.stringify({ index: result }, null, 2));
+  }
+
   if (flags.insert || flags.i) {
     const doc = JSON.parse(flags.insert || flags.i);
     const result = await col.insertOne({
@@ -61,7 +73,7 @@ try {
       created_at: doc.created_at ?? new Date().toISOString(),
     });
     console.log(JSON.stringify({ insertedId: result.insertedId }, null, 2));
-  } else {
+  } else if (!createIndex) {
     const queryObj = JSON.parse(query);
     const cursor = col.find(queryObj, { projection, sort }).limit(limit);
     const docs = await cursor.toArray();
