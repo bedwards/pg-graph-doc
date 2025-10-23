@@ -19,8 +19,15 @@ const flags = Object.fromEntries(
 const positionals = argv.filter(a => !a.startsWith("--") && !a.startsWith("-"));
 const [collectionArg, queryArg = "{}", projArg = "{}"] = positionals;
 
-if (!collectionArg && !flags.insert) {
-  console.error("Usage: node run-mongo.js <collection> '<JSON query>' [projectionJSON] [--project='{}' --limit=50 --sort='{}' --insert='{}']");
+const collection = flags.collection || flags.c || collectionArg;
+const query = flags.query || flags.q || queryArg;
+const projection = flags.project || flags.p ? JSON.parse(flags.project || flags.p) : JSON.parse(projArg);
+const sort = flags.sort || flags.s ? JSON.parse(flags.sort || flags.s) : undefined;
+const limit = flags.limit || flags.l ? Number(flags.limit || flags.l) : 50;
+
+if (!collection) {
+  console.error("Usage: node run-mongo.js --collection=<name> [--query='{}'] [--project='{}'] [--sort='{}'] [--limit=50] [--insert='{}']");
+  console.error("Short: -c <name> [-q '{}'] [-p '{}'] [-s '{}'] [-l 50] [-i '{}']");
   process.exit(1);
 }
 
@@ -29,22 +36,18 @@ await client.connect();
 
 try {
   const db = client.db("postgres");
-  const col = db.collection(collectionArg || (flags.insert ? flags.collection : undefined));
+  const col = db.collection(collection);
 
-  const projection = flags.project || flags.p ? JSON.parse(flags.project || flags.p) : JSON.parse(projArg);
-  const sort = flags.sort || flags.s ? JSON.parse(flags.sort || flags.s) : undefined;
-  const limit = flags.limit || flags.l ? Number(flags.limit || flags.l) : 50;
-
-  if (flags.insert) {
-    const doc = JSON.parse(flags.insert);
+  if (flags.insert || flags.i) {
+    const doc = JSON.parse(flags.insert || flags.i);
     const result = await col.insertOne({
       ...doc,
       created_at: doc.created_at ?? new Date().toISOString(),
     });
     console.log(JSON.stringify({ insertedId: result.insertedId }, null, 2));
   } else {
-    const query = JSON.parse(queryArg);
-    const cursor = col.find(query, { projection, sort }).limit(limit);
+    const queryObj = JSON.parse(query);
+    const cursor = col.find(queryObj, { projection, sort }).limit(limit);
     const docs = await cursor.toArray();
     console.log(JSON.stringify(docs, null, 2));
   }
