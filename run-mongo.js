@@ -5,18 +5,34 @@ dotenv.config({ path: ".env.example", quiet: true });
 
 const argv = process.argv.slice(2);
 
-const flags = Object.fromEntries(
-  argv
-    .filter(a => a.startsWith("--") || a.startsWith("-"))
-    .map(a => {
-      const [k, ...rest] = a.split("=");
-      const key = k.replace(/^--?/, "");
-      const val = rest.length ? rest.join("=") : "true";
-      return [key, val];
-    })
-);
+const flags = {};
+const positionals = [];
 
-const positionals = argv.filter(a => !a.startsWith("--") && !a.startsWith("-"));
+for (let i = 0; i < argv.length; i++) {
+  const arg = argv[i];
+
+  if (arg.startsWith("--") || arg.startsWith("-")) {
+    if (arg.includes("=")) {
+      const [k, ...rest] = arg.split("=");
+      const key = k.replace(/^--?/, "");
+      const val = rest.join("=");
+      flags[key] = val;
+    } else {
+      const key = arg.replace(/^--?/, "");
+      const nextArg = argv[i + 1];
+
+      if (nextArg && !nextArg.startsWith("-")) {
+        flags[key] = nextArg;
+        i++;
+      } else {
+        flags[key] = "true";
+      }
+    }
+  } else {
+    positionals.push(arg);
+  }
+}
+
 const [collectionArg, queryArg = "{}", projArg = "{}"] = positionals;
 
 const collection = flags.collection || flags.c || collectionArg;
