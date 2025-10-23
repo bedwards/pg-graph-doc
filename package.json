@@ -7,6 +7,7 @@
   "scripts": {
     "sql": "node run-sql.js",
     "gql": "node run-gql.js",
+    "docdb": "node run-docdb.js",
     "mongo": "node run-mongo.js"
   },
   "repository": {
