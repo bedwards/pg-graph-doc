@@ -1,7 +1,7 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 import pg from "pg";
 
-dotenv.config({ path: '.env.example', quiet: true });
+dotenv.config({ path: ".env.example", quiet: true });
 const { Client } = pg;
 const client = new Client({ connectionString: process.env.POSTGRES_URL });
 const sql = process.argv.slice(2).join(" ");

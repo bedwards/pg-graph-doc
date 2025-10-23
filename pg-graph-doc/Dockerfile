@@ -1,6 +1,6 @@
 FROM postgres:17-bookworm
-ARG PG_MAJOR=17
 
+ARG PG_MAJOR=17
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl ca-certificates gnupg; \
@@ -15,6 +15,12 @@ RUN set -eux; \
         "postgresql-${PG_MAJOR}-postgis-3"; \
     rm -rf /var/lib/apt/lists/*
 
-COPY 01_extensions.sql /docker-entrypoint-initdb.d/01_extensions.sql
+COPY 01_extensions.sql /docker-entrypoint-initdb.d/
 
-CMD ["postgres", "-c", "shared_preload_libraries=pg_documentdb_core,pg_documentdb,pg_cron", "-c", "cron.database_name=app"]
+ARG ENTRYPOINT=docker-entrypoint-pg-graph-doc.sh
+ARG BIN_DIR=/usr/local/bin
+COPY ${ENTRYPOINT} ${BIN_DIR}/
+RUN chmod +x ${BIN_DIR}/${ENTRYPOINT}
+
+ENTRYPOINT [${ENTRYPOINT}]
+CMD ["postgres"]
