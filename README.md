@@ -191,7 +191,7 @@ Expected output:
                               │
                               v
                     ┌──────────────────────┐
-                    │   PostgreSQL 17      │
+                    │   PostgreSQL 16      │
                     │   Extensions:        │
                     │   • pg_graphql       │
                     │   • documentdb       │
@@ -202,7 +202,7 @@ Expected output:
 
 ## 📦 What's Inside
 
-- **PostgreSQL 17** (or 16) with extensions loaded at startup
+- **PostgreSQL 16** (or 17) with extensions loaded at startup
 - **PostgREST** exposes `pg_graphql` functions via HTTP
 - **FerretDB** translates MongoDB wire protocol to PostgreSQL
 - **Node.js scripts** for command-line querying
