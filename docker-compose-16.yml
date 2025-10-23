@@ -1,0 +1,54 @@
+services:
+
+  pg-graph-doc:
+    container_name: pg-graph-doc
+    image: pg-graph-doc:16
+    ports: ["5432:5432"]
+    restart: unless-stopped
+
+    build:
+      context: pg-graph-doc-16
+      dockerfile: Dockerfile
+
+    environment:
+      POSTGRES_PASSWORD: postgres
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  pg-rpc:
+    container_name: pg-rpc
+    image: postgrest/postgrest:v13.0.7
+    ports: ["3000:3000"]
+    restart: unless-stopped
+    depends_on: [pg-graph-doc]
+
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@pg-graph-doc
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_TX_END: commit
+
+
+  ferretdb:
+    container_name: ferretdb
+    image: ghcr.io/ferretdb/ferretdb:2.5.0
+    restart: unless-stopped
+    depends_on: [pg-graph-doc]
+    ports: ["27017:27017"]
+
+    environment:
+      FERRETDB_POSTGRESQL_URL: postgres://postgres:postgres@pg-graph-doc
+      FERRETDB_TELEMETRY: 0
+      FERRETDB_AUTH: 0
+
+volumes:
+  pgdata:

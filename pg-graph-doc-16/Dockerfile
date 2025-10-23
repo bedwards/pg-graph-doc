@@ -1,6 +1,6 @@
-FROM postgres:17-bookworm
+FROM ghcr.io/ferretdb/postgres-documentdb:16-0.106.0-ferretdb-2.5.0
 
-ARG PG_MAJOR=17
+ARG PG_MAJOR=16
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl ca-certificates gnupg; \
@@ -10,7 +10,6 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         "postgresql-${PG_MAJOR}-pg-graphql" \
-        "postgresql-${PG_MAJOR}-documentdb" \
         "postgresql-${PG_MAJOR}-cron" \
         "postgresql-${PG_MAJOR}-postgis-3"; \
     rm -rf /var/lib/apt/lists/*
