@@ -3,19 +3,12 @@ services:
   pg-graph-doc:
     container_name: pg-graph-doc
     image: pg-graph-doc:17
-    command: [
-      "postgres",
-        "-c", "shared_preload_libraries=pg_documentdb_core,pg_documentdb,pg_cron",
-        "-c", "cron.database_name=app"]
-
+    ports: ["5432:5432"]
     restart: unless-stopped
 
     build:
       context: pg-graph-doc
       dockerfile: Dockerfile
-
-    ports:
-      - "5432:5432"
 
     environment:
       POSTGRES_DB: app
@@ -36,8 +29,9 @@ services:
   pg-rpc:
     container_name: pg-rpc
     image: postgrest/postgrest:v13.0.7
-    depends_on: [pg-graph-doc]
     ports: ["3000:3000"]
+    restart: unless-stopped
+    depends_on: [pg-graph-doc]
 
     environment:
       PGRST_DB_URI: postgres://postgres:postgres@pg-graph-doc:5432/app
@@ -49,12 +43,8 @@ services:
     container_name: ferretdb
     image: ghcr.io/ferretdb/ferretdb:latest
     restart: unless-stopped
-
-    depends_on:
-      - pg-graph-doc
-
-    ports:
-      - "27017:27017"
+    depends_on: [pg-graph-doc]
+    ports: ["27017:27017"]
 
     environment:
       FERRETDB_POSTGRESQL_URL: postgres://postgres:postgres@pg-graph-doc:5432/app

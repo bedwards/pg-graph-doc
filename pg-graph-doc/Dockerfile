@@ -16,3 +16,5 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 COPY 01_extensions.sql /docker-entrypoint-initdb.d/01_extensions.sql
+
+CMD ["postgres", "-c", "shared_preload_libraries=pg_documentdb_core,pg_documentdb,pg_cron", "-c", "cron.database_name=app"]
