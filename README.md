@@ -255,14 +255,6 @@ npm run sql "CREATE TABLE broken (name TEXT);"
 # GraphQL won't expose this table
 ```
 
-### Database Separation
-
-- **SQL/GraphQL**: Use `postgres` database
-- **DocumentDB**: Uses DocumentDB schemas in `postgres` database
-- **MongoDB/FerretDB**: Uses `postgres` database (configurable in .env)
-
-They share the same PostgreSQL instance and can interoperate.
-
 ## 🐛 Troubleshooting
 
 ```bash
