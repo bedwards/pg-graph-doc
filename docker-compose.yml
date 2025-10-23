@@ -33,6 +33,18 @@ services:
       start_period: 10s
 
 
+  pg-rpc:
+    container_name: pg-rpc
+    image: postgrest/postgrest:v13.0.7
+    depends_on: [pg-graph-doc]
+    ports: ["3000:3000"]
+
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@pg-graph-doc:5432/app
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_DB_SCHEMAS: app
+
+
   ferretdb:
     container_name: ferretdb
     image: ghcr.io/ferretdb/ferretdb:latest

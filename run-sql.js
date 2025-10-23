@@ -1,16 +1,22 @@
-import pkg from "pg";
-const { Client } = pkg;
+import dotenv from 'dotenv';
+import pg from "pg";
 
+dotenv.config({ path: '.env.example' });
+const { Client } = pg;
+const client = new Client({ connectionString: process.env.POSTGRES_URL });
 const sql = process.argv.slice(2).join(" ");
-const conn = process.env.PGURL || "postgres://postgres:postgres@127.0.0.1:5432/app";
-const searchPath = process.env.SEARCH_PATH || "app, public";
 
-const client = new Client({ connectionString: conn });
-await client.connect();
+try {
+    await client.connect();
+    const res = await client.query(sql);
+    if (res.rows?.length) console.table(res.rows);
+}
+finally {
+    await client.end();
+}
 
-await client.query(`CREATE SCHEMA IF NOT EXISTS ${searchPath.split(",")[0].trim()};`);
-await client.query(`SET search_path TO ${searchPath};`);
+// const searchPath = process.env.SEARCH_PATH || "app, public";
 
-const res = await client.query(sql);
-if (res.rows?.length) console.table(res.rows);
-await client.end();
+// await client.query(`CREATE SCHEMA IF NOT EXISTS ${searchPath.split(",")[0].trim()};`);
+// await client.query(`SET search_path TO ${searchPath};`);
+

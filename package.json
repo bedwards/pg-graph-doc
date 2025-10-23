@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/bedwards/pg-graph-doc#readme",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "graphql-request": "^7.3.1",
     "mongodb": "^6.20.0",
     "pg": "^8.16.3"
